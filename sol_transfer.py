@@ -532,28 +532,33 @@ async def main():
 
     try:
         # Load your account from private key (Account A)
-        YOUR_PRIVATE_KEY = [68,126,90,68,29,160,132,242,79,115,130,250,44,31,13,240,245,116,48,234,184,1,231,75,127,76,199,122,181,154,188,90,45,121,113,121,195,212,219,239,16,108,210,8,211,52,127,107,109,102,185,252,144,112,113,238,28,186,158,34,214,146,46,93]
+        #convert the private key to a list of bytes (having errors with the private key as a string)
+        YOUR_PRIVATE_KEY = (os.getenv("account_a_pk")).split(",")
+        YOUR_PRIVATE_KEY = [int(byte) for byte in YOUR_PRIVATE_KEY]
         private_key_bytes = bytes(YOUR_PRIVATE_KEY)
         private_key_str = base58.b58encode(private_key_bytes).decode('ascii')
         account_a = transfer_client.load_keypair_from_private_key(private_key_str)
         print(f"Account A public key: {account_a.pubkey()}")
 
         # Load your account from private key (Account B)
-        YOUR_PRIVATE_KEY_B = [115,161,159,149,255,254,214,238,112,241,171,133,24,21,150,17,227,90,136,164,6,39,16,155,118,30,155,177,49,176,208,181,160,207,232,62,98,190,250,191,68,2,140,155,101,253,30,140,183,202,127,138,221,225,157,104,44,99,239,101,236,220,157,59]
+        YOUR_PRIVATE_KEY_B = (os.getenv("account_b_pk")).split(",")
+        YOUR_PRIVATE_KEY_B = [int(byte) for byte in YOUR_PRIVATE_KEY_B]
         private_key_bytes_b = bytes(YOUR_PRIVATE_KEY_B)
         private_key_str_b = base58.b58encode(private_key_bytes_b).decode('ascii')
         account_b = transfer_client.load_keypair_from_private_key(private_key_str_b)
         print(f"Account B public key: {account_b.pubkey()}")
 
         # Load your account from private key (Account C)
-        YOUR_PRIVATE_KEY_C = [73,204,123,204,167,157,181,51,175,151,79,55,18,47,249,144,176,180,147,172,14,76,82,157,100,196,28,86,250,48,163,68,99,120,198,174,194,209,195,149,238,229,55,208,92,196,69,0,219,10,140,185,164,72,160,57,33,174,215,74,17,168,10,51]
+        YOUR_PRIVATE_KEY_C = (os.getenv("account_c_pk")).split(",")
+        YOUR_PRIVATE_KEY_C = [int(byte) for byte in YOUR_PRIVATE_KEY_C]
         private_key_bytes_c = bytes(YOUR_PRIVATE_KEY_C)
         private_key_str_c = base58.b58encode(private_key_bytes_c).decode('ascii')
         account_c = transfer_client.load_keypair_from_private_key(private_key_str_c)
         print(f"Account C public key: {account_c.pubkey()}")
 
         #load your account from private key (Account D)
-        YOUR_PRIVATE_KEY_D = [202,61,142,158,187,65,172,121,246,16,71,246,222,170,126,220,253,51,219,109,143,88,33,44,127,26,9,54,243,204,194,215,38,134,164,160,135,62,193,208,180,135,150,243,230,116,105,8,2,140,104,118,23,183,204,2,162,228,59,138,131,72,10,58]
+        YOUR_PRIVATE_KEY_D = (os.getenv("account_d_pk")).split(",")
+        YOUR_PRIVATE_KEY_D = [int(byte) for byte in YOUR_PRIVATE_KEY_D]
         private_key_bytes_d = bytes(YOUR_PRIVATE_KEY_D)
         private_key_str_d = base58.b58encode(private_key_bytes_d).decode('ascii')
         account_d = transfer_client.load_keypair_from_private_key(private_key_str_d)
@@ -606,28 +611,32 @@ async def main():
 async def main_v2():
     transfer_client = SolanaTransfer()
 
-    YOUR_PRIVATE_KEY = [68,126,90,68,29,160,132,242,79,115,130,250,44,31,13,240,245,116,48,234,184,1,231,75,127,76,199,122,181,154,188,90,45,121,113,121,195,212,219,239,16,108,210,8,211,52,127,107,109,102,185,252,144,112,113,238,28,186,158,34,214,146,46,93]
+    YOUR_PRIVATE_KEY = (os.getenv("account_a_pk")).split(",")
+    YOUR_PRIVATE_KEY = [int(byte) for byte in YOUR_PRIVATE_KEY]
     private_key_bytes = bytes(YOUR_PRIVATE_KEY)
     private_key_str = base58.b58encode(private_key_bytes).decode('ascii')
     account_a = transfer_client.load_keypair_from_private_key(private_key_str)
     print(f"Account A public key: {account_a.pubkey()}")
 
     # Load your account from private key (Account B)
-    YOUR_PRIVATE_KEY_B = [115,161,159,149,255,254,214,238,112,241,171,133,24,21,150,17,227,90,136,164,6,39,16,155,118,30,155,177,49,176,208,181,160,207,232,62,98,190,250,191,68,2,140,155,101,253,30,140,183,202,127,138,221,225,157,104,44,99,239,101,236,220,157,59]
+    YOUR_PRIVATE_KEY_B = (os.getenv("account_b_pk")).split(",")
+    YOUR_PRIVATE_KEY_B = [int(byte) for byte in YOUR_PRIVATE_KEY_B]
     private_key_bytes_b = bytes(YOUR_PRIVATE_KEY_B)
     private_key_str_b = base58.b58encode(private_key_bytes_b).decode('ascii')
     account_b = transfer_client.load_keypair_from_private_key(private_key_str_b)
     print(f"Account B public key: {account_b.pubkey()}")
 
     # Load your account from private key (Account C)
-    YOUR_PRIVATE_KEY_C = [73,204,123,204,167,157,181,51,175,151,79,55,18,47,249,144,176,180,147,172,14,76,82,157,100,196,28,86,250,48,163,68,99,120,198,174,194,209,195,149,238,229,55,208,92,196,69,0,219,10,140,185,164,72,160,57,33,174,215,74,17,168,10,51]
+    YOUR_PRIVATE_KEY_C = (os.getenv("account_c_pk")).split(",")
+    YOUR_PRIVATE_KEY_C = [int(byte) for byte in YOUR_PRIVATE_KEY_C]
     private_key_bytes_c = bytes(YOUR_PRIVATE_KEY_C)
     private_key_str_c = base58.b58encode(private_key_bytes_c).decode('ascii')
     account_c = transfer_client.load_keypair_from_private_key(private_key_str_c)
     print(f"Account C public key: {account_c.pubkey()}")
 
     #load your account from private key (Account D)
-    YOUR_PRIVATE_KEY_D = [202,61,142,158,187,65,172,121,246,16,71,246,222,170,126,220,253,51,219,109,143,88,33,44,127,26,9,54,243,204,194,215,38,134,164,160,135,62,193,208,180,135,150,243,230,116,105,8,2,140,104,118,23,183,204,2,162,228,59,138,131,72,10,58]
+    YOUR_PRIVATE_KEY_D = (os.getenv("account_d_pk")).split(",")
+    YOUR_PRIVATE_KEY_D = [int(byte) for byte in YOUR_PRIVATE_KEY_D]
     private_key_bytes_d = bytes(YOUR_PRIVATE_KEY_D)
     private_key_str_d = base58.b58encode(private_key_bytes_d).decode('ascii')
     account_d = transfer_client.load_keypair_from_private_key(private_key_str_d)
