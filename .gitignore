@@ -21,8 +21,10 @@ wheels/
 *.egg
 
 # Virtual Environment
-venv/
+.env
+.venv
 env/
+venv/
 ENV/
 
 # IDE
@@ -32,7 +34,6 @@ ENV/
 *.swo
 
 # Environment variables
-.env
 .env.local
 .env.*.local
 
@@ -40,7 +41,7 @@ ENV/
 *.log
 logs/
 
-# OS specific
+# OS
 .DS_Store
 Thumbs.db
 

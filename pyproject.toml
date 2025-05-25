@@ -1,0 +1,19 @@
+[project]
+name = "solana-transfer"
+version = "0.1.0"
+description = "Solana transfer utilities"
+requires-python = ">=3.8"
+dependencies = [
+    "solders",
+    "solana",
+    "python-dotenv",
+    "base58",
+    "borsh-construct",
+    "anchorpy",
+    "requests"
+]
+
+
+[tool.rye]
+managed = true
+dev-dependencies = [] 

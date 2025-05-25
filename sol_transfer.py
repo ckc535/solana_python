@@ -2,45 +2,44 @@ from solders.keypair import Keypair
 from solders.pubkey import Pubkey
 from solders.system_program import (TransferParams, transfer ,create_lookup_table,
     extend_lookup_table,
-    freeze_lookup_table,
-    deactivate_lookup_table,
-    close_lookup_table,
     CreateLookupTableParams,
-    ExtendLookupTableParams,
-    FreezeLookupTableParams,
-    DeactivateLookupTableParams,
-    CloseLookupTableParams,
+    ExtendLookupTableParams
 )
-
 from solders.transaction import Transaction, VersionedTransaction
-from solana.rpc.async_api import AsyncClient
 import asyncio
 import base58
-import base64
 import os
 from dotenv import load_dotenv
-from typing import List, Tuple, Optional
+from typing import List, Tuple, Optional, Dict, Any
 from solders.message import Message, MessageV0
 from solders.address_lookup_table_account import (
     AddressLookupTableAccount,
-    AddressLookupTable,
-    derive_lookup_table_address
+    AddressLookupTable
 )
+from src.models.solana_client import SolanaAsyncClient
+
+# Constants
+PROGRAM_ID = "6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P"
+TOKEN_MINT_AUTHORITY = "TSLvdd1pWpHVjahSpsvCXUbgwsL3JAcvokwaKt1eokM"
+CONFIG = "4wTV1YmiEkRvAtNtsSGPtUrqRYQMe5SKy2uB4Jjaxnjf"
+EVENT_AUTHORITY = "Ce6TQqeHC9p8KetsN6JsjHK7UTZk7nasjjnr7XxXp9F1"
+METADATA_PROGRAM_ID = "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s"
+ASSOCIATED_TOKEN_PROGRAM = "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+RENT_PROGRAM = "SysvarRent111111111111111111111111111111111"
 
 # Load environment variables
 load_dotenv()
 
 class SolanaTransfer:
-    def __init__(self, rpc_url=None):
-        """Initialize SolanaTransfer with RPC URL."""
-        self.rpc_url = rpc_url or os.getenv("RPC_URL", "https://api.testnet.solana.com")
-        self.client = AsyncClient(self.rpc_url)
+    def __init__(self):
+        """Initialize SolanaTransfer."""
+        self.client = None
 
-    async def create_account(self):
-        """Create a new Solana account."""
-        return Keypair()
+    async def initialize(self):
+        """Initialize the client connection."""
+        self.client = await SolanaAsyncClient.get_client()
 
-    def load_keypair_from_private_key(self, private_key_str):
+    def load_keypair_from_private_key(self, private_key_str: str) -> Keypair:
         """Load keypair from private key string."""
         try:
             private_key_bytes = base58.b58decode(private_key_str)
@@ -48,7 +47,7 @@ class SolanaTransfer:
         except Exception as e:
             raise Exception(f"Failed to load keypair: {str(e)}")
 
-    async def get_balance(self, pubkey):
+    async def get_balance(self, pubkey: Pubkey) -> float:
         """Get SOL balance for an account."""
         try:
             response = await self.client.get_balance(pubkey)
@@ -56,7 +55,7 @@ class SolanaTransfer:
         except Exception as e:
             raise Exception(f"Failed to get balance: {str(e)}")
 
-    async def transfer_sol(self, from_keypair, to_pubkey, amount_sol):
+    async def transfer_sol(self, from_keypair: Keypair, to_pubkey: Pubkey, amount_sol: float) -> str:
         """Transfer SOL from one account to another."""
         try:
             # Convert SOL to lamports
@@ -90,16 +89,7 @@ class SolanaTransfer:
             raise Exception(f"Transfer failed: {str(e)}")
 
     async def batch_transfer_sol(self, from_keypair: Keypair, recipients: List[Tuple[Pubkey, float]]) -> str:
-        """
-        Create and send a transaction with multiple transfer instructions.
-        
-        Args:
-            from_keypair: The sender's keypair
-            recipients: List of tuples containing (recipient_pubkey, amount_sol)
-        
-        Returns:
-            Transaction signature
-        """
+        """Create and send a transaction with multiple transfer instructions."""
         try:
             # Get recent blockhash first
             recent_blockhash = await self.client.get_latest_blockhash()
@@ -116,8 +106,6 @@ class SolanaTransfer:
                     )
                 )
                 instructions.append(transfer_ix)
-
-
             
             # Create message
             message = Message.new_with_blockhash(
@@ -143,16 +131,7 @@ class SolanaTransfer:
             raise Exception(f"Batch transfer failed: {str(e)}")
 
     async def batch_collect_sol(self, collector_keypair: Keypair, senders: List[Tuple[Keypair, float]]) -> str:
-        """
-        Create and send a transaction to collect SOL from multiple accounts.
-        
-        Args:
-            collector_keypair: The collector's keypair (recipient)
-            senders: List of tuples containing (sender_keypair, amount_sol)
-        
-        Returns:
-            Transaction signature
-        """
+        """Create and send a transaction to collect SOL from multiple accounts."""
         try:
             # Get recent blockhash first
             recent_blockhash = await self.client.get_latest_blockhash()
@@ -171,7 +150,6 @@ class SolanaTransfer:
                 instructions.append(transfer_ix)
             
             # Create message
-            # Get pubkeys of all the sender keypairs (not the tuples)
             sender_pubkeys = [sender_keypair.pubkey() for sender_keypair, _ in senders]
             message = Message.new_with_blockhash(
                 instructions,
@@ -180,10 +158,9 @@ class SolanaTransfer:
             )
             
             # Create transaction with required parameters
-            # Get the keypairs from the tuples
             all_signers = [sender_keypair for sender_keypair, _ in senders]
             transaction = Transaction(
-                from_keypairs=all_signers,  # All signers need to sign
+                from_keypairs=all_signers,
                 message=message,
                 recent_blockhash=recent_blockhash.value.blockhash
             )
@@ -196,17 +173,7 @@ class SolanaTransfer:
             raise Exception(f"Batch collection failed: {str(e)}")
 
     async def create_address_lookup_table(self, authority: Keypair, payer: Keypair, recent_blockhash: bytes) -> Tuple[Pubkey, str]:
-        """
-        Create a new Address Lookup Table.
-        
-        Args:
-            authority: The authority keypair that can modify the lookup table
-            payer: The keypair that will pay for the transaction
-            recent_blockhash: The recent blockhash for the transaction
-            
-        Returns:
-            Tuple of (lookup_table_address, transaction_signature)
-        """
+        """Create a new Address Lookup Table."""
         try:
             # Create lookup table instruction
             lookup_table_address = Pubkey.new_unique()
@@ -234,17 +201,7 @@ class SolanaTransfer:
             raise Exception(f"Failed to create address lookup table: {str(e)}")
 
     async def extend_address_lookup_table(self, lookup_table_address: Pubkey, authority: Keypair, addresses: List[Pubkey]) -> str:
-        """
-        Extend an existing Address Lookup Table with new addresses.
-        
-        Args:
-            lookup_table_address: The address of the lookup table to extend
-            authority: The authority keypair that can modify the lookup table
-            addresses: List of addresses to add to the lookup table
-            
-        Returns:
-            Transaction signature
-        """
+        """Extend an existing Address Lookup Table with new addresses."""
         try:
             # Get recent blockhash
             recent_blockhash = await self.client.get_latest_blockhash()
@@ -275,22 +232,11 @@ class SolanaTransfer:
             raise Exception(f"Failed to extend address lookup table: {str(e)}")
 
     async def create_and_extend_lookup_table(self, authority: Keypair, addresses: List[Pubkey]) -> Tuple[Pubkey, Pubkey, str]:
-        """
-        Create and extend an Address Lookup Table in a single transaction.
-        
-        Args:
-            authority: The authority keypair that can modify the lookup table
-            addresses: List of addresses to add to the lookup table
-            
-        Returns:
-            Tuple of (lookup_table_address, transaction_signature)
-        """
+        """Create and extend an Address Lookup Table in a single transaction."""
         try:
             # Get recent blockhash
             recent_blockhash = await self.client.get_latest_blockhash()
             slot = await self.client.get_slot()
-            
-            # Create lookup table address
             
             # Create lookup table instruction
             create_ix, lut_address = create_lookup_table(
@@ -332,10 +278,8 @@ class SolanaTransfer:
         except Exception as e:
             raise Exception(f"Failed to create and extend address lookup table: {str(e)}")
 
-    async def batch_transfer_sol_v2(self, from_keypair: Keypair,recipients: List[Tuple[Pubkey, float]], lookup_table_account: AddressLookupTableAccount) -> str:
-        """
-        Create and send a versioned transaction that creates an address lookup table and performs transfers in one tx.
-        """
+    async def batch_transfer_sol_v2(self, from_keypair: Keypair, recipients: List[Tuple[Pubkey, float]], lookup_table_account: AddressLookupTableAccount) -> str:
+        """Create and send a versioned transaction that creates an address lookup table and performs transfers in one tx."""
         try:
             # Get recent blockhash first
             recent_blockhash = await self.client.get_latest_blockhash()
@@ -345,7 +289,6 @@ class SolanaTransfer:
             all_pubkeys.add(from_keypair.pubkey())
             for recipient_pubkey, _ in recipients:
                 all_pubkeys.add(recipient_pubkey)
-            
             
             # Create transfer instructions
             transfer_instructions = []
@@ -364,14 +307,14 @@ class SolanaTransfer:
             message = MessageV0.try_compile(
                 from_keypair.pubkey(),
                 transfer_instructions,
-                [lookup_table_account],  # Use the lookup table
+                [lookup_table_account],
                 recent_blockhash.value.blockhash,
             )
             
             # Create versioned transaction
             transaction = VersionedTransaction(
                 message,
-                [from_keypair]  # Signers
+                [from_keypair]
             )
 
             print(f"tx bytes: {len(bytes(transaction))}")
@@ -384,17 +327,7 @@ class SolanaTransfer:
             raise Exception(f"Batch transfer v2 failed: {str(e)}")
 
     async def batch_collect_sol_v2(self, collector_keypair: Keypair, senders: List[Tuple[Keypair, float]], lookup_table_account: AddressLookupTableAccount) -> str:
-        """
-        Create and send a versioned transaction to collect SOL from multiple accounts using an Address Lookup Table.
-        
-        Args:
-            collector_keypair: The collector's keypair (recipient)
-            senders: List of tuples containing (sender_keypair, amount_sol)
-            lookup_table_account: The Address Lookup Table account containing all addresses
-            
-        Returns:
-            Transaction signature
-        """
+        """Create and send a versioned transaction to collect SOL from multiple accounts using an Address Lookup Table."""
         try:
             # Get recent blockhash first
             recent_blockhash = await self.client.get_latest_blockhash()
@@ -411,22 +344,21 @@ class SolanaTransfer:
                     )
                 )
                 transfer_instructions.append(transfer_ix)
-            #payer is the first sender
-            payer = senders[0][0]
+            
             # Create message v0
+            payer = senders[0][0]
             message = MessageV0.try_compile(
-                payer.pubkey(),  # payer
+                payer.pubkey(),
                 transfer_instructions,
-                [lookup_table_account],  # Use the lookup table
+                [lookup_table_account],
                 recent_blockhash.value.blockhash,
             )
             
             # Create versioned transaction
-            # Get all signers (collector and all senders)
             all_signers = [sender_keypair for sender_keypair, _ in senders]
             transaction = VersionedTransaction(
                 message,
-                all_signers  # All signers need to sign
+                all_signers
             )
 
             print(f"tx bytes: {len(bytes(transaction))}")
@@ -438,20 +370,8 @@ class SolanaTransfer:
         except Exception as e:
             raise Exception(f"Batch collection v2 failed: {str(e)}")
 
-    async def close(self):
-        """Close the client connection."""
-        await self.client.close()
-
     async def is_lookup_table_available(self, lookup_table_address: Pubkey) -> bool:
-        """
-        Check if an Address Lookup Table is available.
-        
-        Args:
-            lookup_table_address: The address of the lookup table to check
-            
-        Returns:
-            bool: True if the lookup table exists and is available, False otherwise
-        """
+        """Check if an Address Lookup Table is available."""
         try:
             # Get account info
             account_info = await self.client.get_account_info(lookup_table_address)
@@ -462,7 +382,6 @@ class SolanaTransfer:
                 return False
                 
             # Check if the account is owned by the Address Lookup Table program
-            # The Address Lookup Table program ID is "AddressLookupTab1e1111111111111111111111111"
             lookup_table_program_id = Pubkey.from_string("AddressLookupTab1e1111111111111111111111111")
             
             return account_info.value.owner == lookup_table_program_id
@@ -471,15 +390,7 @@ class SolanaTransfer:
             raise Exception(f"Failed to check lookup table availability: {str(e)}")
 
     async def get_lookup_table_data(self, lookup_table_address: Pubkey) -> Optional[AddressLookupTableAccount]:
-        """
-        Get AddressLookupTableAccount information by its pubkey.
-        
-        Args:
-            lookup_table_address: The address of the lookup table to check
-            
-        Returns:
-            Optional[AddressLookupTableAccount]: The parsed lookup table account if found and valid, None otherwise
-        """
+        """Get AddressLookupTableAccount information by its pubkey."""
         try:
             print(f"\nFetching lookup table data for address: {lookup_table_address}")
             
@@ -503,9 +414,7 @@ class SolanaTransfer:
                 return None
 
             try:
-                # Try to decode base64 data first
-                
-                # Parse using AddressLookupTable first
+                # Parse using AddressLookupTable
                 lookup_table = AddressLookupTable.deserialize(account_info.value.data)
                 print(f"Successfully parsed lookup table with {len(lookup_table.addresses)} addresses")
                 
@@ -529,10 +438,10 @@ class SolanaTransfer:
 async def main():
     # Initialize transfer client
     transfer_client = SolanaTransfer()
+    await transfer_client.initialize()
 
     try:
         # Load your account from private key (Account A)
-        #convert the private key to a list of bytes (having errors with the private key as a string)
         YOUR_PRIVATE_KEY = (os.getenv("account_a_pk")).split(",")
         YOUR_PRIVATE_KEY = [int(byte) for byte in YOUR_PRIVATE_KEY]
         private_key_bytes = bytes(YOUR_PRIVATE_KEY)
@@ -603,54 +512,8 @@ async def main():
         print(f"Account C balance: {balance_c} SOL")
         print(f"Account D balance: {balance_d} SOL")
 
-    except Exception as e:
-        print(f"Error: {str(e)}")
     finally:
-        await transfer_client.close()
-
-async def main_v2():
-    transfer_client = SolanaTransfer()
-
-    YOUR_PRIVATE_KEY = (os.getenv("account_a_pk")).split(",")
-    YOUR_PRIVATE_KEY = [int(byte) for byte in YOUR_PRIVATE_KEY]
-    private_key_bytes = bytes(YOUR_PRIVATE_KEY)
-    private_key_str = base58.b58encode(private_key_bytes).decode('ascii')
-    account_a = transfer_client.load_keypair_from_private_key(private_key_str)
-    print(f"Account A public key: {account_a.pubkey()}")
-
-    # Load your account from private key (Account B)
-    YOUR_PRIVATE_KEY_B = (os.getenv("account_b_pk")).split(",")
-    YOUR_PRIVATE_KEY_B = [int(byte) for byte in YOUR_PRIVATE_KEY_B]
-    private_key_bytes_b = bytes(YOUR_PRIVATE_KEY_B)
-    private_key_str_b = base58.b58encode(private_key_bytes_b).decode('ascii')
-    account_b = transfer_client.load_keypair_from_private_key(private_key_str_b)
-    print(f"Account B public key: {account_b.pubkey()}")
-
-    # Load your account from private key (Account C)
-    YOUR_PRIVATE_KEY_C = (os.getenv("account_c_pk")).split(",")
-    YOUR_PRIVATE_KEY_C = [int(byte) for byte in YOUR_PRIVATE_KEY_C]
-    private_key_bytes_c = bytes(YOUR_PRIVATE_KEY_C)
-    private_key_str_c = base58.b58encode(private_key_bytes_c).decode('ascii')
-    account_c = transfer_client.load_keypair_from_private_key(private_key_str_c)
-    print(f"Account C public key: {account_c.pubkey()}")
-
-    #load your account from private key (Account D)
-    YOUR_PRIVATE_KEY_D = (os.getenv("account_d_pk")).split(",")
-    YOUR_PRIVATE_KEY_D = [int(byte) for byte in YOUR_PRIVATE_KEY_D]
-    private_key_bytes_d = bytes(YOUR_PRIVATE_KEY_D)
-    private_key_str_d = base58.b58encode(private_key_bytes_d).decode('ascii')
-    account_d = transfer_client.load_keypair_from_private_key(private_key_str_d)
-    print(f"Account D public key: {account_d.pubkey()}")
-
-    #create and extend lookup table
-    lut_address, lut_account, tx = await transfer_client.create_and_extend_lookup_table(
-        account_a,
-        [account_b.pubkey(), account_c.pubkey(),account_d.pubkey()]
-    )
-    print(f"Lookup table address: {lut_address}")
-    print(f"Lookup table account: {lut_account}")
-    
-    
+        await SolanaAsyncClient.close_client()
 
 if __name__ == "__main__":
     asyncio.run(main()) 
